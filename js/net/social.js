@@ -327,7 +327,10 @@ G.Social = (() => {
       host = (await fb.rtdb.ref('rooms/' + id + '/host').get()).val();
     } catch (e) { /* sala borrada */ }
     if (!host) { rtOff(); return { ok: false, error: 'Esa sala ya no existe.' }; }
-    if (open !== true) { rtOff(); return { ok: false, error: 'La partida de esa sala ya ha empezado.' }; }
+    if (open !== true) { rtOff(); return { ok: false, error: 'Esa sala está cerrada.' }; }
+    let banned = null;
+    try { banned = (await fb.rtdb.ref('rooms/' + id + '/ban/' + uid).get()).val(); } catch (e) { /* reglas viejas */ }
+    if (banned) { rtOff(); return { ok: false, error: 'El anfitrión te ha expulsado de esa sala.' }; }
     try { await fb.rtdb.ref('rooms/' + id + '/m/' + uid).set(memberInfo()); }
     catch (e) { rtOff(); return { ok: false, error: 'No se pudo entrar en la sala.' }; }
     const n = (await fb.rtdb.ref('rooms/' + id + '/m').get()).numChildren();
@@ -341,12 +344,34 @@ G.Social = (() => {
   }
 
   function enterRoom(id, host) {
-    room = { id, host, isHost: host === uid, members: [], open: true };
+    room = { id, host, isHost: host === uid, members: [], open: true, live: false, banned: new Set() };
     watchRoomDisconnect();
     const mref = fb.rtdb.ref('rooms/' + id + '/m');
+    let seenSelf = false, rejoining = false, lastRejoin = 0;
     mref.on('value', s => {
       if (!room || room.id !== id) return;
       const m = s.val() || {};
+      // Invitado: tu plaza ha desaparecido sin que salieras tú. O te han
+      // expulsado, o se te cortó internet y la base de datos te sacó sola
+      // (onDisconnect): entonces vuelves a apuntarte y sigues en la sala.
+      if (!room.isHost) {
+        if (m[uid]) seenSelf = true;
+        else if (seenSelf && !rejoining) {
+          // Si te vuelven a sacar enseguida, es que te han expulsado (aunque no se pueda leer la lista).
+          if (Date.now() - lastRejoin < 15000) { kickedOut(); return; }
+          rejoining = true; lastRejoin = Date.now();
+          fb.rtdb.ref('rooms/' + id + '/ban/' + uid).get().then(b => b.val()).catch(() => false).then(async banned => {
+            if (!room || room.id !== id) return;
+            if (banned) { kickedOut(); return; }
+            try { await fb.rtdb.ref('rooms/' + id + '/m/' + uid).set(memberInfo()); watchRoomDisconnect(); }
+            catch (e) { closedRoom(); }
+          }).finally(() => { rejoining = false; });
+          return;
+        }
+      } else {
+        // Anfitrión: si un expulsado vuelve a entrar (reglas viejas), fuera.
+        for (const k of Object.keys(m)) if (room.banned.has(k)) { fb.rtdb.ref('rooms/' + id + '/m/' + k).remove().catch(() => {}); delete m[k]; }
+      }
       // El anfitrión siempre primero; el resto por orden de llegada.
       room.members = Object.keys(m).map(k => Object.assign({ uid: k }, m[k]))
         .sort((a, b) => (a.uid === room.host ? -1 : b.uid === room.host ? 1 : (a.at || 0) - (b.at || 0)));
@@ -356,7 +381,10 @@ G.Social = (() => {
     href.on('value', s => { if (room && room.id === id && !s.val()) closedRoom(); }, () => closedRoom());
     const oref = fb.rtdb.ref('rooms/' + id + '/open');
     oref.on('value', s => { if (room && room.id === id) { room.open = s.val() === true; emit('room'); } }, () => {});
-    roomRefs = [mref, href, oref];
+    // ¿Hay una partida en curso? (los invitados pueden entrar a mitad)
+    const lref = fb.rtdb.ref('rooms/' + id + '/live');
+    lref.on('value', s => { if (room && room.id === id) { room.live = s.val() === true; emit('room'); } }, () => {});
+    roomRefs = [mref, href, oref, lref];
     writeStatus();
     emit('room');
   }
@@ -397,10 +425,40 @@ G.Social = (() => {
     emit('room');
   }
 
-  /** El anfitrión cierra la sala a nuevos jugadores al empezar la partida. */
+  /** El anfitrión abre o cierra la sala a nuevos jugadores. */
   function setOpen(open) {
     if (room && room.isHost) fb.rtdb.ref('rooms/' + room.id + '/open').set(!!open).catch(() => {});
   }
+
+  /** El anfitrión apunta si hay partida en curso (la sala sigue abierta: se entra a mitad). */
+  function setLive(live) {
+    if (!room || !room.isHost) return;
+    room.live = !!live;
+    fb.rtdb.ref('rooms/' + room.id + '/live').set(!!live).catch(() => {});
+  }
+
+  /** Anfitrión: echa a alguien de la sala y no le deja volver a entrar en ella. */
+  function kick(other) {
+    if (!room || !room.isHost || other === uid) return;
+    room.banned.add(other);
+    fb.rtdb.ref('rooms/' + room.id + '/ban/' + other).set(true).catch(() => {});
+    fb.rtdb.ref('rooms/' + room.id + '/m/' + other).remove().catch(() => {});
+    fb.fs.collection('inv').doc(other + '_' + uid).delete().catch(() => {});
+    sentInv.delete(other);
+  }
+
+  /** Te han expulsado: fuera de la sala (sin borrar nada: ya lo ha hecho el anfitrión). */
+  function kickedOut() {
+    if (!room || room.isHost) return;
+    detachRoom();
+    try { fb.rtdb.ref('rooms/' + room.id + '/m/' + uid).onDisconnect().cancel(); } catch (e) { /* nada */ }
+    room = null;
+    writeStatus();
+    rtOff();
+    emit('room-kicked');
+  }
+
+  const isBanned = other => !!(room && room.banned && room.banned.has(other));
 
   /** Actualiza tu Pokémon en la sala (si cambias de compañero). */
   function refreshMember() {
@@ -521,7 +579,7 @@ G.Social = (() => {
 
   return {
     start, stop, claimNick, request, accept, remove, publishProfile, getProfile, profileData,
-    createRoom, joinRoom, leaveRoom, setOpen, refreshMember, setPlaying, refreshPresence,
+    createRoom, joinRoom, leaveRoom, setOpen, setLive, kick, kickedOut, isBanned, refreshMember, setPlaying, refreshPresence,
     invite, acceptInvite, declineInvite,
     on(fn) { listeners.add(fn); }, off(fn) { listeners.delete(fn); },
     get me() { return me; },

@@ -576,5 +576,26 @@ G.I18n.add({
   // ---------------- reportar marcas del ranking ----------------
   'Reportar marca sospechosa': 'Report suspicious record', 'Ya la has reportado': 'You already reported it',
   'Ya has reportado esta marca': 'You already reported this record',
-  '¿Reportar la marca de {x} como trampa?': "Report {x}'s record as cheating?", 'Gracias: la revisaremos': 'Thanks: we will review it'
+  '¿Reportar la marca de {x} como trampa?': "Report {x}'s record as cheating?", 'Gracias: la revisaremos': 'Thanks: we will review it',
+  // ---------------- cooperativo: entrar a mitad, expulsar y pausar ----------------
+  'Entrar en la partida': 'Join the game', 'Entrando…': 'Joining…', 'Entrando en la partida…': 'Joining the game…',
+  'Aún no hay conexión con el anfitrión. Espera un momento.': 'Not connected to the host yet. Wait a moment.',
+  'Estás en la sala de {x}. La partida ya ha empezado: puedes entrar ahora.': 'You\'re in {x}\'s room. The game has already started: you can join now.',
+  'Entrarás en el minuto en que va la partida, con las mejoras de los niveles que te has perdido.': 'You\'ll join at the game\'s current minute, with upgrades for the levels you missed.',
+  'No se puede conectar con el anfitrión: su red (o la tuya) no deja jugar en grupo. Se reintenta solo.': 'Can\'t connect to the host: their network (or yours) doesn\'t allow group play. Retrying automatically.',
+  'Conectando con el anfitrión…': 'Connecting to the host…',
+  'Te has unido a la partida': 'You joined the game',
+  'Te has unido a la partida: tienes {x} mejoras de los niveles que te has perdido': 'You joined the game: you got {x} upgrades for the levels you missed',
+  '{x} se ha unido a la partida': '{x} joined the game', '{x} ha vuelto a la partida': '{x} is back in the game', '{x} ha sido expulsado': '{x} was kicked',
+  'Se ha cortado la conexión con {x} (anfitrión): reconectando…': 'Lost connection to {x} (host): reconnecting…',
+  'No se ha podido volver a conectar con el anfitrión.': 'Couldn\'t reconnect to the host.',
+  'El anfitrión te ha expulsado de la partida.': 'The host kicked you from the game.', 'El anfitrión te ha expulsado de la sala': 'The host kicked you from the room',
+  'El anfitrión te ha expulsado de esa sala.': 'The host kicked you from that room.', 'El anfitrión ha cerrado la sala.': 'The host closed the room.',
+  'Esa sala está cerrada.': 'That room is closed.', 'Unirse': 'Join', 'Expulsar': 'Kick', 'Jugadores': 'Players',
+  '¿Expulsar a {x} de la sala? No podrá volver a entrar en ella.': 'Kick {x} from the room? They won\'t be able to rejoin it.',
+  '¿Expulsar a {x} de la partida? No podrá volver a entrar en esta sala.': 'Kick {x} from the game? They won\'t be able to rejoin this room.',
+  'Pausar para todos': 'Pause for everyone', 'Reanudar para todos': 'Resume for everyone',
+  'El anfitrión ha pausado la partida para todos.': 'The host has paused the game for everyone.',
+  'Has pausado la partida para todos: reanúdala desde la pausa': 'You paused the game for everyone: resume it from the pause menu',
+  'Pausa: {x} (anfitrión) ha pausado la partida': 'Paused: {x} (host) paused the game',
 });

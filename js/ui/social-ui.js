@@ -123,6 +123,14 @@
         } else if (f.status === 'out') {
           btn('Cancelar', 'ghost', () => G.Social.remove(f.uid));
         } else {
+          // Está en una sala (jugando o no): puedes entrar con él, también a mitad de partida.
+          if (f.online && f.room && !inRoom && !room) {
+            btn('Unirse', 'gold', async () => {
+              const r = await G.Social.joinRoom(f.room);
+              if (!r.ok) { msg(r.error, true); return; }
+              G.LobbyUI.open();
+            });
+          }
           if (f.online && !f.play && !inRoom && (!room || room.isHost)) {
             btn('Invitar', 'gold', async () => {
               const r = await G.Social.invite(f.uid);
@@ -143,6 +151,7 @@
 
   G.LobbyUI = (() => {
     let membersKey = '';
+    let joinAskedAt = 0;
 
     function init() {
       $('lobby-leave').onclick = async () => {
@@ -153,6 +162,11 @@
       $('lobby-menu').onclick = () => G.MenuUI.open();
       $('lobby-start').onclick = start;
       $('lobby-start').dataset.sfx = 'confirm';
+      $('lobby-join').onclick = () => {
+        if (G.Coop.requestJoin()) { G.UI.toast('Entrando en la partida…', 2000); joinAskedAt = Date.now(); render(); setTimeout(() => { if (G.UI.isOpen('scr-lobby')) render(); }, 6100); }
+        else G.UI.toast('Aún no hay conexión con el anfitrión. Espera un momento.', 2600);
+      };
+      $('lobby-join').dataset.sfx = 'confirm';
       // Conecta / desconecta la red al entrar o salir de una sala.
       G.Social.on(what => {
         const room = G.Social.room;
@@ -162,6 +176,10 @@
         } else if (G.Net.open_) G.Net.close();
         if (what === 'room-closed') {
           G.UI.toast('La sala se ha cerrado', 2600);
+          if (G.UI.isOpen('scr-lobby')) G.MenuUI.open();
+        }
+        if (what === 'room-kicked') {
+          if (G.Game.state === 'ui') G.UI.toast('El anfitrión te ha expulsado de la sala', 3200);   // en partida ya lo dice el final
           if (G.UI.isOpen('scr-lobby')) G.MenuUI.open();
         }
         if (G.UI.isOpen('scr-lobby')) render();
@@ -193,10 +211,11 @@
       const ms = room.members;
       $('lobby-sub').textContent = room.isHost
         ? 'Eres el anfitrión. Invita a tus amigos (hasta ' + G.Social.MAX_PLAYERS + ') y empezad cuando estéis.'
-        : 'Estás en la sala de ' + ((ms.find(m => m.uid === room.host) || {}).name || '…') + '. El anfitrión empezará la partida.';
+        : 'Estás en la sala de ' + ((ms.find(m => m.uid === room.host) || {}).name || '…') + '. ' +
+          (room.live ? 'La partida ya ha empezado: puedes entrar ahora.' : 'El anfitrión empezará la partida.');
 
       // Las tarjetas sólo se rehacen si cambian los miembros (los sprites no parpadean).
-      const key = ms.map(m => m.uid + ':' + m.dex + ':' + (m.shiny ? 1 : 0)).join('|');
+      const key = ms.map(m => m.uid + ':' + m.dex + ':' + (m.shiny ? 1 : 0)).join('|') + (room.isHost ? ':h' : '');
       const box = $('lobby-members');
       if (key !== membersKey) {
         membersKey = key;
@@ -209,6 +228,13 @@
             c.style.setProperty('--pc', G.Coop.COLORS[i]);
             c.appendChild(G.UI.spriteCanvas(m.dex, 120, 96, { scale: 2, lively: true, shiny: !!m.shiny }));
             c.insertAdjacentHTML('beforeend', `<b translate="no">${esc(m.name)}</b><small>${esc((G.DEX_BY[m.dex] || {}).name || '')}</small><span class="conn" data-u="${m.uid}"></span>`);
+            // El anfitrión puede echar a cualquiera de la sala.
+            if (room.isHost && m.uid !== room.host) {
+              const k = document.createElement('button');
+              k.className = 'btn small ghost lob-kick'; k.textContent = 'Expulsar';
+              k.onclick = () => { if (confirm('¿Expulsar a ' + m.name + ' de la sala? No podrá volver a entrar en ella.')) G.Coop.kick(m.uid); };
+              c.appendChild(k);
+            }
           } else c.innerHTML = '<span>Libre</span>';
           box.appendChild(c);
         }
@@ -242,13 +268,28 @@
         }
       }
 
+      // Invitado con la partida empezada: botón para entrar.
+      const join = $('lobby-join');
+      const canJoin = !room.isHost && room.live;
+      join.classList.toggle('hidden', !canJoin);
+      if (canJoin) {
+        const ready = G.Net.mode(room.host) === 'direct';
+        const asked = Date.now() - joinAskedAt < 6000;
+        join.disabled = !ready || asked;
+        join.textContent = asked ? 'Entrando…' : 'Entrar en la partida';
+      }
+
       const btn = $('lobby-start');
-      btn.classList.toggle('hidden', !room.isHost);
+      btn.classList.toggle('hidden', !room.isHost || room.live);
       const connecting = ms.some(m => m.uid !== room.host && G.Net.mode(m.uid) === 'connecting');
       const failed = ms.some(m => m.uid !== room.host && G.Net.mode(m.uid) === 'failed');
       btn.disabled = !room.isHost || ms.length < 2 || connecting || failed;
       btn.textContent = 'Empezar partida (' + ms.length + '/' + G.Social.MAX_PLAYERS + ')';
-      $('lobby-note').textContent = !room.isHost ? 'Cuando el anfitrión empiece, entraréis todos a la vez.'
+      $('lobby-note').textContent = !room.isHost
+          ? (room.live ? (G.Net.mode(room.host) === 'direct' ? 'Entrarás en el minuto en que va la partida, con las mejoras de los niveles que te has perdido.'
+                                                                : G.Net.mode(room.host) === 'failed' ? 'No se puede conectar con el anfitrión: su red (o la tuya) no deja jugar en grupo. Se reintenta solo.'
+                                                                : 'Conectando con el anfitrión…')
+                       : 'Cuando el anfitrión empiece, entraréis todos a la vez.')
         : ms.length < 2 ? 'Necesitas al menos un amigo en la sala.'
         : failed ? 'No se puede conectar con algún amigo: su red (o la tuya) no deja jugar en grupo. Probad con otra wifi o datos móviles; se reintenta solo.'
         : connecting ? 'Conectando con tus amigos…' : 'La partida empieza para todos a la vez.';
@@ -261,7 +302,8 @@
         k: 'start', seed: Math.floor(Math.random() * 1e6), host: room.host,
         members: room.members.map(m => ({ uid: m.uid, name: m.name, dex: m.dex, shiny: !!m.shiny }))
       };
-      G.Social.setOpen(false);
+      // La sala sigue abierta: se puede entrar (o volver) con la partida empezada.
+      G.Social.setLive(true);
       G.Net.broadcast(cfg);
       G.Flow.startCoop(cfg);
     }

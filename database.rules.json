@@ -14,7 +14,12 @@
         },
         "m": {
           "$uid": {
-            ".write": "auth != null && auth.uid === $uid && (!newData.exists() || data.exists() || (root.child('rooms').child($room).child('open').val() === true))"
+            ".write": "auth != null && auth.uid === $uid && (!newData.exists() || data.exists() || (root.child('rooms').child($room).child('open').val() === true && !root.child('rooms').child($room).child('ban').child($uid).exists()))"
+          }
+        },
+        "ban": {
+          "$uid": {
+            ".read": "auth != null && auth.uid === $uid"
           }
         },
         "q": {

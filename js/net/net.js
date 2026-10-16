@@ -25,7 +25,9 @@ G.Net = (() => {
   // costaba del cooperativo. Sin conexión directa, esa pareja no puede jugar
   // junta ('failed') y el anfitrión lo reintenta cada RETRY_MS. Por la base de datos
   // sólo pasa la señalización (unos pocos mensajes pequeños para conectarse).
-  const ALLOW_RELAY = false, RETRY_MS = 15000;
+  // Reintento cada 6 s (era 15): al volver a conectar, el compañero vuelve a la
+  // partida en curso (coop.js), así que cuanto antes se reintente, mejor.
+  const ALLOW_RELAY = false, RETRY_MS = 6000;
 
 
   let rtdb = null, uid = null, roomId = null, isHost = false, hostUid = null;

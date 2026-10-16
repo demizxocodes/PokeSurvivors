@@ -224,8 +224,44 @@ G.RunUI = (() => {
   function showPause(coop = false) {
     G.UI.soundControls($('pause-sound'));
     $('pause-coop').classList.toggle('hidden', !coop);
+    $('pause-coop').textContent = coop && G.Coop.paused ? 'El anfitrión ha pausado la partida para todos.'
+                                                        : 'Partida en grupo: el juego sigue mientras estás aquí.';
     $('btn-quit').textContent = coop ? 'Salir de la partida' : 'Abandonar run';
+    renderHostTools(coop && G.Coop.isHost);
     G.UI.show('scr-pause');
+  }
+
+  /** Anfitrión, en la pausa: parar la partida para todos y expulsar a alguien. */
+  function renderHostTools(on) {
+    const box = $('pause-host');
+    box.classList.toggle('hidden', !on);
+    box.innerHTML = '';
+    if (!on) return;
+    const pz = document.createElement('button');
+    pz.className = 'btn ' + (G.Coop.paused ? 'gold' : '');
+    pz.textContent = G.Coop.paused ? 'Reanudar para todos' : 'Pausar para todos';
+    pz.onclick = () => { G.Coop.setPaused(!G.Coop.paused); G.Audio.sfx('confirm'); showPause(true); };
+    box.appendChild(pz);
+    const mates = G.Coop.connectedMates;
+    if (!mates.length) return;
+    const h = document.createElement('p');
+    h.className = 'sub'; h.textContent = 'Jugadores';
+    box.appendChild(h);
+    for (const m of mates) {
+      const row = document.createElement('div');
+      row.className = 'fr-row';
+      row.innerHTML = `<i class="dot on" style="background:${m.color}"></i><b translate="no"></b><span class="grow"></span>`;
+      row.querySelector('b').textContent = m.name;
+      const k = document.createElement('button');
+      k.className = 'btn small ghost'; k.textContent = 'Expulsar';
+      k.onclick = () => {
+        if (!confirm('¿Expulsar a ' + m.name + ' de la partida? No podrá volver a entrar en esta sala.')) return;
+        G.Coop.kick(m.uid);
+        showPause(true);
+      };
+      row.appendChild(k);
+      box.appendChild(row);
+    }
   }
 
   function wirePause(onResume, onQuit) {

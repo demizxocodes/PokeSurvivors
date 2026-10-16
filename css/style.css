@@ -842,3 +842,9 @@ a.btn { text-decoration: none; display: inline-block; color: var(--ink); }
   #dex-detail .btn { position: sticky; bottom: 0; order: 9; margin-top: auto; padding: 8px 6px; font-size: 15px;
     box-shadow: 0 -6px 10px rgba(5,10,25,.6); }
 }
+
+/* Pausa del anfitrión en grupo: pausar para todos y expulsar */
+.pause-host { display: flex; flex-direction: column; gap: 6px; margin: 10px 0; text-align: left; }
+.pause-host > .btn { align-self: center; }
+.pause-host .sub { margin: 6px 0 0; }
+.lob-kick { margin-top: 4px; }

@@ -6,6 +6,17 @@
  * Cada línea en español y en inglés.
  */
 G.CHANGELOG = [
+  { d: '2026-10-17', title: ['Entra y vuelve a mitad de partida', 'Join and rejoin mid-game'], new: [
+    ['Cooperativo: ya se puede entrar en una partida en grupo que ha empezado. Pulsa Unirse en tu lista de amigos (o acepta su invitación) y luego Entrar en la partida: entras en el minuto en que va, con una mejora al azar por cada nivel que te has perdido.',
+     'Co-op: you can now join a group game that has already started. Press Join in your friends list (or accept their invitation) and then Join the game: you come in at the current minute, with a random upgrade for every level you missed.'],
+    ['Cooperativo: si se te corta la conexión, la partida se queda en pausa para ti y vuelves con tu Pokémon tal cual en cuanto se recupera (hasta 2 minutos). Si se te cierra el juego, vuelves desde la sala.',
+     'Co-op: if your connection drops, the game pauses for you and you come back with your Pokémon exactly as it was as soon as it recovers (up to 2 minutes). If the game closes on you, you can come back from the room.'],
+    ['Cooperativo: el anfitrión puede expulsar a un jugador (desde la sala o desde la pausa) y pausar la partida para todos desde la pausa.',
+     'Co-op: the host can kick a player (from the room or from the pause menu) and pause the game for everyone from the pause menu.']
+  ], chg: [
+    ['Lo que ganas al acabar una partida en la que entraste a mitad sólo cuenta desde que entraste.',
+     'When you joined a game mid-way, your end-of-run rewards only count from when you joined.']
+  ] },
   { d: '2026-10-15', title: ['Actualizaciones obligatorias', 'Required updates'], chg: [
     ['Cuando una actualización sea obligatoria (por ejemplo, para arreglar un fallo importante), la partida en curso se termina tras un aviso de 10 s y el juego se recarga. No pierdes nada: las monedas, los tickets, los récords y el ranking de esa partida se guardan como al abandonarla.',
      'When an update is required (for example, to fix an important bug), your current run ends after a 10 s notice and the game reloads. You lose nothing: that run’s coins, tickets, records and leaderboard entry are saved as if you had quit.']
